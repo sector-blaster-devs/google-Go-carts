@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desk Racer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Orbitron:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- 3D WebGL Canvas Mount -->
+    <div id="canvas-container"></div>
+
+    <!-- Helmet Visor Overlay (Visible in Camera 2: Helmet Visor POV — Clean, no top chip) -->
+    <div id="helmet-visor-overlay" class="hidden">
+      <div class="visor-vignette"></div>
+    </div>
+
+    <!-- Subtle Corner Vignette Behind HUD Elements (Visible in Camera Views 1 & 2) -->
+    <div id="hud-corner-vignette"></div>
+
+    <!-- Streamlined HUD Overlay -->
+    <div id="hud-root">
+      <!-- Top Row: Clickable "Desk Racer" Title (Top-Left) & Lap Counter/Timer + Mute Icon (Top-Right) -->
+      <header class="hud-top-bar">
+        <div class="hud-top-left-stack">
+          <div
+            id="hud-brand-logo"
+            class="hud-brand-title"
+            role="button"
+            tabindex="0"
+            title="Click to open Controls &amp; Camera Menu"
+          >Desk Racer</div>
+        </div>
+
+        <div class="hud-settings-anchor">
+          <div class="hud-top-right-row">
+            <!-- Top-Right Lap Counter & Lap Timer (Visible in 1P & 2P Views) -->
+            <div id="hud-lap-widget" class="hud-lap-widget">
+              <div id="hud-lap-header" class="hud-lap-header">
+                LAP <span id="hud-lap-curr" class="hud-lap-curr">1</span>/3
+              </div>
+              <div id="hud-lap-timer" class="hud-lap-timer" aria-label="00:00.00"><span class="timer-digit" id="lap-d0">0</span><span class="timer-digit" id="lap-d1">0</span><span class="timer-sep">:</span><span class="timer-digit" id="lap-d2">0</span><span class="timer-digit" id="lap-d3">0</span><span class="timer-sep">.</span><span class="timer-digit" id="lap-d4">0</span><span class="timer-digit" id="lap-d5">0</span></div>
+              <div id="hud-lap-split" class="hud-lap-split hidden"></div>
+            </div>
+
+            <!-- Top-Right Credits & Licenses Button -->
+            <button
+              id="btn-open-credits"
+              class="hud-mute-btn hud-credits-btn"
+              type="button"
+              aria-label="View Credits and Licenses (C)"
+              title="Credits & Licenses (C)"
+            >
+              <svg class="mute-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </button>
+
+            <!-- Top-Right Mute / Unmute Sound Icon Button -->
+            <button
+              id="btn-mute-sound"
+              class="hud-mute-btn is-muted"
+              type="button"
+              aria-label="Toggle Sound (M)"
+              title="Toggle Sound (M)"
+            >
+              <!-- Speaker Unmuted Icon -->
+              <svg id="icon-sound-on" class="mute-svg hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+              <!-- Speaker Muted Icon -->
+              <svg id="icon-sound-off" class="mute-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Welcome & Controls Dialog (Shown on Launch & When Clicking "Desk Racer") -->
+      <div id="welcome-dialog-overlay" class="welcome-dialog-overlay">
+        <div class="welcome-dialog-card" role="dialog" aria-labelledby="welcome-title">
+          <div class="welcome-eyebrow">DESKTOP CIRCUIT · 3 LAPS</div>
+          <h1 id="welcome-title" class="welcome-title">DESK RACER</h1>
+
+          <div class="welcome-controls-grid">
+            <!-- WASD Controls -->
+            <div class="welcome-control-block">
+              <div class="welcome-control-label">CONTROLS</div>
+              <div class="control-keys-list" aria-label="WASD Controls">
+                <div class="control-key-row">
+                  <div class="control-kbd-pair">
+                    <kbd class="welcome-key">W</kbd>
+                  </div>
+                  <span>ACCELERATE</span>
+                </div>
+                <div class="control-key-row">
+                  <div class="control-kbd-pair">
+                    <kbd class="welcome-key">A</kbd>
+                    <kbd class="welcome-key">D</kbd>
+                  </div>
+                  <span>STEER</span>
+                </div>
+                <div class="control-key-row">
+                  <div class="control-kbd-pair">
+                    <kbd class="welcome-key">S</kbd>
+                  </div>
+                  <span>BRAKE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Game Views 1-4 -->
+            <div class="welcome-control-block">
+              <div class="welcome-control-label">GAME VIEWS</div>
+              <div class="cam-keys-list">
+                <div class="cam-key-row cam-pill active" data-cam="1"><kbd class="welcome-key welcome-key-cyan">1</kbd><span>CHASE VIEW</span></div>
+                <div class="cam-key-row cam-pill" data-cam="2"><kbd class="welcome-key welcome-key-cyan">2</kbd><span>COCKPIT</span></div>
+                <div class="cam-key-row cam-pill" data-cam="3"><kbd class="welcome-key welcome-key-cyan">3</kbd><span>FULL DESK VIEW</span></div>
+                <div class="cam-key-row cam-pill" data-cam="4"><kbd class="welcome-key welcome-key-cyan">4</kbd><span>DRONE VIEW</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="welcome-footer-row">
+            <button id="btn-welcome-start" class="welcome-start-btn" type="button">
+              <span id="welcome-start-text" class="welcome-start-text">START TIME TRIAL</span>
+              <kbd id="welcome-enter-kbd" class="welcome-enter-kbd">ENTER ↵</kbd>
+              <span class="welcome-btn-progress-track" aria-hidden="true">
+                <span id="welcome-btn-progress-fill" class="welcome-btn-progress-fill"></span>
+              </span>
+            </button>
+            <button id="btn-welcome-credits" class="welcome-credits-btn" type="button" title="View Credits & Licenses (C)">
+              <svg class="welcome-credits-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span>CREDITS</span>
+              <kbd class="welcome-credits-kbd">C</kbd>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Formula 1 Countdown Number (Triggered by pressing Enter at Start) -->
+      <div id="hud-f1-countdown" class="hud-f1-countdown hidden">5</div>
+
+      <div id="hud-finish-overlay" class="welcome-dialog-overlay hud-finish-overlay hidden" role="dialog" aria-labelledby="hud-finish-title">
+        <div class="welcome-dialog-card finish-dialog-card">
+          <div class="welcome-eyebrow">DESKTOP CIRCUIT · 3 LAPS COMPLETE</div>
+          <h2 id="hud-finish-title" class="hud-finish-title">FINISH</h2>
+          <div id="hud-finish-time" class="hud-finish-time">00:00.00</div>
+          <div id="hud-finish-sub" class="hud-finish-sub">BEST LAP 00:00.00</div>
+          <div class="finish-actions-row">
+            <button id="btn-finish-race-again" class="welcome-start-btn finish-action-btn" type="button">
+              <span class="welcome-start-text">RACE AGAIN</span>
+              <kbd class="welcome-enter-kbd">ENTER ↵</kbd>
+            </button>
+            <button id="btn-finish-autopilot" class="welcome-start-btn finish-action-btn finish-autopilot-btn" type="button">
+              <span class="welcome-start-text">AUTO-PILOT</span>
+              <kbd class="welcome-enter-kbd">P</kbd>
+            </button>
+            <button id="btn-finish-credits" class="welcome-start-btn finish-action-btn finish-credits-btn" type="button" title="View Credits & Licenses (C)">
+              <span class="welcome-start-text">CREDITS</span>
+              <kbd class="welcome-enter-kbd">C</kbd>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credits & Licenses Modal Overlay -->
+      <div id="credits-dialog-overlay" class="welcome-dialog-overlay credits-dialog-overlay hidden" role="dialog" aria-labelledby="credits-dialog-title" aria-modal="true">
+        <div class="welcome-dialog-card credits-dialog-card">
+          <!-- Top Header with title, eyebrow, and close button -->
+          <div class="credits-dialog-header">
+            <div class="credits-header-titles">
+              <div class="welcome-eyebrow">ATTRIBUTIONS &amp; OPEN SOURCE</div>
+              <h2 id="credits-dialog-title" class="credits-dialog-title">CREDITS &amp; LICENSES</h2>
+            </div>
+            <button id="btn-close-credits" class="credits-close-btn" type="button" aria-label="Close Credits Dialog (Esc)" title="Close (Esc)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              <kbd class="credits-esc-kbd">ESC</kbd>
+            </button>
+          </div>
+
+          <!-- Navigation Tabs -->
+          <div class="credits-tabs-bar" role="tablist">
+            <button class="credits-tab-btn active" data-tab="tab-overview" role="tab" aria-selected="true">OVERVIEW</button>
+            <button class="credits-tab-btn" data-tab="tab-software" role="tab" aria-selected="false">LIBRARIES</button>
+            <button class="credits-tab-btn" data-tab="tab-assets" role="tab" aria-selected="false">3D ASSETS</button>
+            <button class="credits-tab-btn" data-tab="tab-audio-fonts" role="tab" aria-selected="false">AUDIO &amp; FONTS</button>
+            <button class="credits-tab-btn" data-tab="tab-licenses" role="tab" aria-selected="false">LEGAL TEXTS</button>
+          </div>
+
+          <!-- Scrollable Tab Content Container -->
+          <div class="credits-scroll-container">
+            <!-- TAB 1: OVERVIEW -->
+            <div id="tab-overview" class="credits-tab-pane active" role="tabpanel">
+              <div class="credits-lead-card">
+                <div class="lead-badge">1:87 HO SCALE · DESKTOP ROLLERCOASTER RACER</div>
+                <p class="lead-desc">
+                  <strong>Desk Racer</strong> is an interactive real-time 3D miniature coaster time-trial simulator built for the modern web. It fuses precision rigid-body dynamics, custom raycast coaster suspension, ACES Filmic photographic rendering with Vogel-spiral depth-of-field, and procedural Web Audio synthesis on a detailed 1:87 desktop diorama.
+                </p>
+              </div>
+
+              <div class="credits-section-heading">CORE DISCIPLINES &amp; SYSTEMS</div>
+              <div class="credits-cards-grid">
+                <div class="credits-spec-card">
+                  <div class="spec-category">SIMULATION &amp; DYNAMICS</div>
+                  <div class="spec-name">Rapier 3D Physics &amp; Banking Math</div>
+                  <div class="spec-details">High-speed 60 Hz physics loop, multi-point raycast wheel suspension, dynamic downforce curves, lateral drift slide mechanics, and continuous coaster spline banking.</div>
+                </div>
+                <div class="credits-spec-card">
+                  <div class="spec-category">GRAPHICS &amp; VISUALS</div>
+                  <div class="spec-name">Three.js Macro WebGL Pipeline</div>
+                  <div class="spec-details">ACES Filmic tone mapping, 25-tap Golden-Angle Vogel spiral hardware-depth bokeh pass, Unreal bloom glow, dynamic tire smoke particles, and real-time 3D projected minimap radar.</div>
+                </div>
+                <div class="credits-spec-card">
+                  <div class="spec-category">AUDIO SYNTHESIS</div>
+                  <div class="spec-name">Procedural Web Audio Engine</div>
+                  <div class="spec-details">Multi-harmonic engine frequency synthesis, biquad resonant filter sweeps for tire screeches, curb rumble resonance, and authentic FIA Formula 1 countdown audio chimes.</div>
+                </div>
+                <div class="credits-spec-card">
+                  <div class="spec-category">SCALE &amp; DIORAMA</div>
+                  <div class="spec-name">1:87 Micro Scale Environment</div>
+                  <div class="spec-details">Calibrated against realistic desk equipment: Logitech G915 mechanical keyboard, Razer mouse mat, BoYata laptop riser, Fifine AM8 mic, and warm golden-hour architectural lighting.</div>
+                </div>
+              </div>
+
+              <div class="credits-section-heading">KEYBOARD SHORTCUTS REFERENCE</div>
+              <div class="credits-shortcuts-table">
+                <div class="shortcut-row"><kbd class="shortcut-kbd">W / S</kbd><span class="shortcut-desc">Accelerate / Brake &amp; Reverse</span></div>
+                <div class="shortcut-row"><kbd class="shortcut-kbd">A / D</kbd><span class="shortcut-desc">Precision Steering &amp; Counter-Steer</span></div>
+                <div class="shortcut-row"><kbd class="shortcut-kbd">1 - 4</kbd><span class="shortcut-desc">Camera Views: Chase, Cockpit Visor, Full Desk, Drone Orbit</span></div>
+                <div class="shortcut-row"><kbd class="shortcut-kbd">R</kbd><span class="shortcut-desc">Reset Kart to Start Grid</span></div>
+                <div class="shortcut-row"><kbd class="shortcut-kbd">P</kbd><span class="shortcut-desc">Toggle AI Auto-Pilot Cruiser</span></div>
+                <div class="shortcut-row"><kbd class="shortcut-kbd">M</kbd><span class="shortcut-desc">Mute / Unmute Dynamic Audio</span></div>
+                <div class="shortcut-row"><kbd class="shortcut-kbd">C</kbd><span class="shortcut-desc">Toggle Credits &amp; Licenses Dialog</span></div>
+              </div>
+            </div>
+
+            <!-- TAB 2: LIBRARIES -->
+            <div id="tab-software" class="credits-tab-pane" role="tabpanel">
+              <div class="credits-section-heading">OPEN SOURCE DEPENDENCIES</div>
+              <div class="credits-cards-grid">
+                <!-- Three.js -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-mit">MIT LICENSE</span>
+                    <span class="spec-version">v0.183.2</span>
+                  </div>
+                  <div class="spec-name">Three.js</div>
+                  <div class="spec-author">Ricardo Cabello (mrdoob) and Three.js contributors</div>
+                  <div class="spec-details">WebGL 3D graphics rendering engine, scene graph management, PBR materials, tone mapping, camera controls, and post-processing shaders (UnrealBloom, BokehPass, FXAA).</div>
+                  <div class="spec-link-row">
+                    <span class="spec-link">https://threejs.org</span>
+                  </div>
+                </div>
+
+                <!-- Rapier3D -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-apache">APACHE 2.0</span>
+                    <span class="spec-version">v0.19.3</span>
+                  </div>
+                  <div class="spec-name">@dimforge/rapier3d-compat</div>
+                  <div class="spec-author">Dimforge (Sébastien Crozet and contributors)</div>
+                  <div class="spec-details">Fast WebAssembly 3D physics engine powering real-time rigid body dynamics, collider shapes, raycasting, and suspension contact resolution.</div>
+                  <div class="spec-link-row">
+                    <span class="spec-link">https://rapier.rs</span>
+                  </div>
+                </div>
+
+                <!-- Vite -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-mit">MIT LICENSE</span>
+                    <span class="spec-version">v6.2.0</span>
+                  </div>
+                  <div class="spec-name">Vite</div>
+                  <div class="spec-author">Evan You and Vite contributors</div>
+                  <div class="spec-details">Next generation frontend tooling, development server with hot module replacement, and production asset bundling.</div>
+                  <div class="spec-link-row">
+                    <span class="spec-link">https://vite.dev</span>
+                  </div>
+                </div>
+
+                <!-- React & React-DOM -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-mit">MIT LICENSE</span>
+                    <span class="spec-version">v19.0.1</span>
+                  </div>
+                  <div class="spec-name">React &amp; React-DOM</div>
+                  <div class="spec-author">Meta Platforms, Inc. and contributors</div>
+                  <div class="spec-details">Declarative UI component architecture and client rendering runtime.</div>
+                  <div class="spec-link-row">
+                    <span class="spec-link">https://react.dev</span>
+                  </div>
+                </div>
+
+                <!-- TypeScript -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-apache">APACHE 2.0</span>
+                    <span class="spec-version">v5.8.2</span>
+                  </div>
+                  <div class="spec-name">TypeScript</div>
+                  <div class="spec-author">Microsoft Corporation</div>
+                  <div class="spec-details">Static type checking and language tooling for robust, type-safe development.</div>
+                  <div class="spec-link-row">
+                    <span class="spec-link">https://www.typescriptlang.org</span>
+                  </div>
+                </div>
+
+                <!-- Tailwind CSS -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-mit">MIT LICENSE</span>
+                    <span class="spec-version">v4</span>
+                  </div>
+                  <div class="spec-name">Tailwind CSS</div>
+                  <div class="spec-author">Tailwind Labs, Inc.</div>
+                  <div class="spec-details">Utility-first CSS styling and layout engine.</div>
+                  <div class="spec-link-row">
+                    <span class="spec-link">https://tailwindcss.com</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: 3D ASSETS -->
+            <div id="tab-assets" class="credits-tab-pane" role="tabpanel">
+              <div class="credits-section-heading">3D MODELS &amp; DIORAMA GEOMETRY</div>
+              <div class="credits-cards-grid">
+                <!-- Micro-Kart -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-cc">CC BY 4.0 / APACHE 2.0</span>
+                    <span class="spec-version">GLTF 2.0</span>
+                  </div>
+                  <div class="spec-name">1:87 HO Micro-Kart (kart_1to87.glb)</div>
+                  <div class="spec-author">Google AI Studio Starter Assets · Desk Racer</div>
+                  <div class="spec-details">Precision miniature formula kart (18mm length, 12mm width, 8mm height) with aerodynamic front wing, steering knuckle linkages, cockpit driver helmet, rear downforce wing, and spinning wheel hubs.</div>
+                </div>
+
+                <!-- Desk Diorama Props -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-cc">CC BY 4.0 / APACHE 2.0</span>
+                    <span class="spec-version">GLTF 2.0</span>
+                  </div>
+                  <div class="spec-name">Desk Props Diorama (desk_props.glb)</div>
+                  <div class="spec-author">Google AI Studio Starter Assets · Desk Racer</div>
+                  <div class="spec-details">Detailed desktop props including:
+                    <ul class="spec-list">
+                      <li>Logitech G915 Lightspeed Mechanical Wireless Keyboard</li>
+                      <li>Razer Hard Mouse Mat &amp; Ergonomic Gaming Mouse</li>
+                      <li>BoYata Matte-Black Aluminum Z-Pillar Laptop Stand</li>
+                      <li>Fifine AM8 Dynamic Podcasting Mic with Glowing Blue LED Ring</li>
+                      <li>LG UltraGear 27" Gaming Monitor with Top Webcam</li>
+                      <li>White Oval Diffused Key-Light Desk Lamp</li>
+                      <li>Ginger-and-White Chubby Cat Desk Figurine</li>
+                      <li>Weathered Oak Desk Tabletop with Natural Wood Grain</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Coaster Track -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-apache">APACHE 2.0</span>
+                    <span class="spec-version">GLTF / SPLINE</span>
+                  </div>
+                  <div class="spec-name">Tubular Coaster Track &amp; Spline Data</div>
+                  <div class="spec-author">Desk Racer Circuit Engineering</div>
+                  <div class="spec-details">Continuous 3D tubular coaster rails (`track_coaster.glb` &amp; `track_spline.json`) featuring cross-tie supports, FIA red/white curbs, G915 keyboard overpass, BoYata laptop helix climb, lamp corkscrew, and start/finish gantry.</div>
+                </div>
+
+                <!-- Room Environment -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-mit">MIT LICENSE</span>
+                    <span class="spec-version">PMREM HDR</span>
+                  </div>
+                  <div class="spec-name">Studio Room Environment &amp; Golden-Hour Lighting</div>
+                  <div class="spec-author">Three.js RoomEnvironment &amp; Procedural Sky</div>
+                  <div class="spec-details">Photorealistic PMREM radiosity environment providing realistic metallic specular highlights, warm sunset directional sunbeams, and soft shadow attenuation.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 4: AUDIO & FONTS -->
+            <div id="tab-audio-fonts" class="credits-tab-pane" role="tabpanel">
+              <div class="credits-section-heading">AUDIO &amp; SOUND DESIGN</div>
+              <div class="credits-cards-grid">
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-apache">APACHE 2.0</span>
+                    <span class="spec-version">WEB AUDIO API</span>
+                  </div>
+                  <div class="spec-name">WebAudioSynth Dynamic Engine</div>
+                  <div class="spec-author">Custom Procedural Audio Architecture</div>
+                  <div class="spec-details">Real-time synthesizer synthesizing engine RPM harmonic oscillators, throttle sputter bursts, biquad filter frequency sweeps responding to lateral tire slip, and FIA starting lights countdown beeps.</div>
+                </div>
+
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-cc">CC0 / CC BY 3.0</span>
+                    <span class="spec-version">WAV / FOLEY</span>
+                  </div>
+                  <div class="spec-name">High-Fidelity Audio Sample Loops</div>
+                  <div class="spec-author">Desk Racer Foley Library</div>
+                  <div class="spec-details">Sampled sound loops in `public/assets/audio/`:
+                    <ul class="spec-list">
+                      <li>`curb_rumble_loop.wav` · High-frequency curb rumble strip vibration</li>
+                      <li>`kart_idle_loop.wav` · Low-frequency four-stroke engine idle</li>
+                      <li>`kart_cruise_mid_loop.wav` · Mid-RPM cruising throttle tone</li>
+                      <li>`kart_tire_drift_loop.wav` · High-friction lateral tire scrub</li>
+                      <li>`engine_sputter_burst_1..3.wav` · Dynamic exhaust overrun pops</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="credits-section-heading">TYPOGRAPHY &amp; WEB FONTS</div>
+              <div class="credits-cards-grid">
+                <!-- Orbitron -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-ofl">SIL OFL 1.1</span>
+                    <span class="spec-version">GOOGLE FONTS</span>
+                  </div>
+                  <div class="spec-name">Orbitron</div>
+                  <div class="spec-author">Matt McInerney / The Orbitron Project</div>
+                  <div class="spec-details">Geometric sci-fi display typeface with bold italic numerals used for speedometer gauges, lap timers, and HUD headings.</div>
+                </div>
+
+                <!-- Inter -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-ofl">SIL OFL 1.1</span>
+                    <span class="spec-version">GOOGLE FONTS</span>
+                  </div>
+                  <div class="spec-name">Inter</div>
+                  <div class="spec-author">Rasmus Andersson</div>
+                  <div class="spec-details">Precision interface typeface optimized for computer screens, clean legibility, and modern UI text.</div>
+                </div>
+
+                <!-- JetBrains Mono -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-ofl">SIL OFL 1.1</span>
+                    <span class="spec-version">GOOGLE FONTS</span>
+                  </div>
+                  <div class="spec-name">JetBrains Mono</div>
+                  <div class="spec-author">JetBrains</div>
+                  <div class="spec-details">Monospace typeface crafted for technical clarity, code displays, telemetry data, and keyboard shortcut keys.</div>
+                </div>
+
+                <!-- Press Start 2P -->
+                <div class="credits-spec-card">
+                  <div class="spec-header-row">
+                    <span class="spec-badge badge-ofl">SIL OFL 1.1</span>
+                    <span class="spec-version">GOOGLE FONTS</span>
+                  </div>
+                  <div class="spec-name">Press Start 2P</div>
+                  <div class="spec-author">CodeMan38</div>
+                  <div class="spec-details">Retro bitmap arcade font for gaming accents and start countdown banners.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 5: LEGAL LICENSES -->
+            <div id="tab-licenses" class="credits-tab-pane" role="tabpanel">
+              <div class="credits-section-heading">COMPLETE LICENSE TEXTS</div>
+
+              <!-- MIT License Accordion/Card -->
+              <div class="license-block-card">
+                <div class="license-block-header">
+                  <div>
+                    <h3 class="license-block-title">The MIT License (MIT)</h3>
+                    <div class="license-block-sub">Applies to Three.js, Vite, React, and RoomEnvironment</div>
+                  </div>
+                  <button class="btn-copy-license" data-copy-target="license-text-mit" type="button" title="Copy License Text">
+                    COPY
+                  </button>
+                </div>
+                <pre id="license-text-mit" class="license-text-pre">Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+              </div>
+
+              <!-- Apache License 2.0 -->
+              <div class="license-block-card">
+                <div class="license-block-header">
+                  <div>
+                    <h3 class="license-block-title">Apache License, Version 2.0</h3>
+                    <div class="license-block-sub">Applies to @dimforge/rapier3d-compat, TypeScript, and Starter 3D Models</div>
+                  </div>
+                  <button class="btn-copy-license" data-copy-target="license-text-apache" type="button" title="Copy License Text">
+                    COPY
+                  </button>
+                </div>
+                <pre id="license-text-apache" class="license-text-pre">Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION:
+1. Definitions.
+"License" shall mean the terms and conditions for use, reproduction, and distribution as defined by Sections 1 through 9 of this document.
+"Licensor" shall mean the copyright owner or entity authorized by the copyright owner that is granting the License.
+2. Grant of Copyright License. Subject to the terms and conditions of this License, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare Derivative Works of, publicly display, publicly perform, sublicense, and distribute the Work and such Derivative Works in Source or Object form.
+3. Grant of Patent License. Subject to the terms of this License, each Contributor grants to You a perpetual, worldwide patent license to make, use, sell, and offer for sale the Work.
+4. Redistribution. You may reproduce and distribute copies of the Work or Derivative Works thereof in any medium, with or without modifications, provided that You meet the following conditions: You must give any other recipients of the Work a copy of this License; You must cause any modified files to carry prominent notices stating that You changed the files; and You must retain all copyright, patent, trademark, and attribution notices.</pre>
+              </div>
+
+              <!-- SIL Open Font License 1.1 -->
+              <div class="license-block-card">
+                <div class="license-block-header">
+                  <div>
+                    <h3 class="license-block-title">SIL Open Font License, Version 1.1</h3>
+                    <div class="license-block-sub">Applies to Orbitron, Inter, JetBrains Mono, and Press Start 2P fonts</div>
+                  </div>
+                  <button class="btn-copy-license" data-copy-target="license-text-ofl" type="button" title="Copy License Text">
+                    COPY
+                  </button>
+                </div>
+                <pre id="license-text-ofl" class="license-text-pre">SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide development
+of collaborative font projects, to support the font creation efforts of academic
+and linguistic communities, and to provide a free and open framework in which
+fonts may be shared and improved in partnership with others.
+
+PERMISSION &amp; CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of the Font Software, to use, study, copy, merge, embed, modify, redistribute,
+and sell modified and unmodified copies of the Font Software, subject to the
+following conditions:
+
+1) Neither the Font Software nor any of its individual components, in Original
+or Modified Versions, may be sold by itself.
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy contains
+the above copyright notice and this license.
+3) No Modified Version of the Font Software may use the Reserved Font Name(s)
+unless explicit written permission is granted by the corresponding Copyright
+Holder.
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font Software
+shall not be used to promote, endorse or advertise any Modified Version.
+5) The Font Software, modified or unmodified, in part or in whole, must be
+distributed entirely under this license and not under any other license.</pre>
+              </div>
+
+              <!-- Creative Commons Attribution 4.0 -->
+              <div class="license-block-card">
+                <div class="license-block-header">
+                  <div>
+                    <h3 class="license-block-title">Creative Commons Attribution 4.0 International (CC BY 4.0)</h3>
+                    <div class="license-block-sub">Applies to 3D Diorama Assets &amp; Audio Foley Samples</div>
+                  </div>
+                  <button class="btn-copy-license" data-copy-target="license-text-cc" type="button" title="Copy License Text">
+                    COPY
+                  </button>
+                </div>
+                <pre id="license-text-cc" class="license-text-pre">You are free to:
+- Share — copy and redistribute the material in any medium or format for any purpose, even commercially.
+- Adapt — remix, transform, and build upon the material for any purpose, even commercially.
+
+Under the following terms:
+- Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+- No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.</pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Footer -->
+          <div class="credits-dialog-footer">
+            <span class="credits-footer-note">All trademarks, logos, and product brand names are property of their respective owners.</span>
+            <button id="btn-credits-done" class="credits-done-btn" type="button">CLOSE</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Row: 3D Tilted Racetrack Minimap (Bottom-Left) | Angled Segmented Speedometer HUD (Bottom-Right) -->
+      <footer class="hud-bottom-bar">
+        <!-- Bottom-Left: Borderless Horizontally-Tilted 3D Racetrack Outline & Cyan Glowing Dot -->
+        <div class="hud-minimap-widget" title="Live Racetrack Position">
+          <canvas id="minimap-canvas" width="600" height="390"></canvas>
+        </div>
+
+        <!-- Bottom-Right: Sleek Angled Segmented Speed Bar + Italic KM/H & Speed Readout -->
+        <div class="hud-speedo-gauge">
+          <svg id="speedo-gauge-svg" viewBox="0 0 284 134" class="speedo-svg">
+            <defs>
+              <linearGradient id="speedoFrameStrokeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="rgba(255, 255, 255, 0.35)" />
+                <stop offset="45%" stop-color="rgba(160, 240, 255, 0.55)" />
+                <stop offset="100%" stop-color="rgba(0, 232, 255, 0.92)" />
+              </linearGradient>
+              <filter id="speedoCyanGlow" x="-25%" y="-25%" width="150%" height="150%">
+                <feGaussianBlur stdDeviation="2.4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <!-- Outer dark angled bar casing & cyan-accented frame -->
+            <polygon
+              id="speedo-bar-casing"
+              points="15,108 62,34 268,6 276,22 73,50 28,118"
+              class="speedo-bar-casing"
+              stroke="url(#speedoFrameStrokeGrad)"
+            />
+
+            <!-- 18 angled parallelogram speed segments populated dynamically at startup -->
+            <g id="speedo-ticks-group"></g>
+          </svg>
+
+          <!-- Italic KM/H label & Large Bold Italic Speed Readout tucked inside the angled bar -->
+          <div class="speedo-readout-group">
+            <div class="speedo-unit-label">KM/H</div>
+            <div id="hud-scale-speed" class="speedo-digits">0</div>
+          </div>
+        </div>
+      </footer>
+
+      <!-- Mobile Bottom Touch Controls Row (Visible in Mobile View after clicking Start Time Trial) -->
+      <div
+        id="mobile-touch-controls"
+        class="mobile-touch-controls hidden"
+        role="region"
+        aria-label="Mobile Driving Controls"
+      >
+        <!-- Left Side: Left (A) and Right (D) Steer Icons -->
+        <div class="mobile-ctrl-cluster mobile-steer-cluster" role="group" aria-label="Steering Controls">
+          <button
+            id="btn-touch-left"
+            class="mobile-ctrl-btn mobile-ctrl-steer"
+            type="button"
+            data-control="left"
+            aria-label="Steer Left (A)"
+            title="Steer Left (A)"
+          >
+            <span class="mobile-ctrl-inner">
+              <svg class="mobile-ctrl-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="13 17 8 12 13 7"></polyline>
+                <polyline points="18 17 13 12 18 7" opacity="0.45"></polyline>
+              </svg>
+              <span class="mobile-ctrl-label">LEFT</span>
+            </span>
+          </button>
+
+          <button
+            id="btn-touch-right"
+            class="mobile-ctrl-btn mobile-ctrl-steer"
+            type="button"
+            data-control="right"
+            aria-label="Steer Right (D)"
+            title="Steer Right (D)"
+          >
+            <span class="mobile-ctrl-inner">
+              <svg class="mobile-ctrl-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="11 17 16 12 11 7"></polyline>
+                <polyline points="6 17 11 12 6 7" opacity="0.45"></polyline>
+              </svg>
+              <span class="mobile-ctrl-label">RIGHT</span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Right Side: Accelerate (W) and Brake (S) Icons -->
+        <div class="mobile-ctrl-cluster mobile-pedal-cluster" role="group" aria-label="Accelerate and Brake Controls">
+          <button
+            id="btn-touch-accel"
+            class="mobile-ctrl-btn mobile-ctrl-accel"
+            type="button"
+            data-control="forward"
+            aria-label="Accelerate (W)"
+            title="Accelerate (W)"
+          >
+            <span class="mobile-ctrl-inner">
+              <svg class="mobile-ctrl-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="17 13 12 8 7 13"></polyline>
+                <polyline points="17 18 12 13 7 18" opacity="0.45"></polyline>
+              </svg>
+              <span class="mobile-ctrl-label">ACCEL</span>
+            </span>
+          </button>
+
+          <button
+            id="btn-touch-brake"
+            class="mobile-ctrl-btn mobile-ctrl-brake"
+            type="button"
+            data-control="backward"
+            aria-label="Brake (S)"
+            title="Brake (S)"
+          >
+            <span class="mobile-ctrl-inner">
+              <svg class="mobile-ctrl-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="7 8 12 13 17 8"></polyline>
+                <line x1="7" y1="17" x2="17" y2="17"></line>
+              </svg>
+              <span class="mobile-ctrl-label">BRAKE</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
